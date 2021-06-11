@@ -1,0 +1,148 @@
+pragma solidity 0.8.1;
+pragma experimental ABIEncoderV2;
+
+
+contract RockPaperScissor{
+    
+//    address BobAddress = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
+//    address AliceAddress = 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2;
+    uint8 constant SCISSOR = 1;
+    uint8 constant ROCK = 2;
+    uint8 constant PAPER = 3;
+    uint8 constant NO_VOTE = 0;
+    
+     struct Rounds {
+        uint256 id;
+        bool moveAlreadyMadebyChallenger;
+        bool moveAlreadyMadebyChallenged;
+        uint256 value;
+        uint8 playerOneVote;
+        uint8 playerTwoVote;
+        address payable challenger;
+        address payable challenged;
+        bool playerTwoEnrolled;
+    }
+    
+    Rounds[] newRound;
+    
+    mapping (address => uint256) voteNumberByPlayer;
+    mapping (address => uint256) tokenBalance;
+    mapping (address => mapping(uint256 => bool)) moveAlreadyMade;
+    
+    event roundCreated(address challenger, address challenged, uint256 value);
+    event challengedEnrollment(address challengedAddress, uint256 forRoundId);
+    event challengerMadeHisMove(uint256 forRoundId);
+    event challengedMadeHisMove(uint256 forRoundId);
+    event challengerCancelledRound(uint256 forRoundId);
+     
+    function addBalance(uint256 tokenAmount)  public {
+        tokenBalance[msg.sender] += tokenAmount;
+    }
+
+    function enrollAsChallenged(uint256 _id, uint256 _value) public  {
+        require(msg.sender == newRound[_id].challenged, "challenger and challenged cannot have the same address");
+        require(newRound[_id].playerTwoEnrolled == false, "you already made your move to this round");
+        require(newRound[_id].value == _value, "in order to play you need to deposit the same token amount as the challenger did");
+        
+        newRound[_id].playerTwoEnrolled = true;
+        newRound[_id].value += _value;
+        tokenBalance[msg.sender]-= _value;
+        
+        emit challengedEnrollment(msg.sender, _id);
+    }
+    
+    function createRound(address payable challenger, address payable challenged, uint256 _value) public  {
+        _enrollAsChallenger(_value);
+        Rounds memory currentRound = Rounds(newRound.length, false, false, _value, NO_VOTE, NO_VOTE, challenger, challenged, false);
+        newRound.push(currentRound);
+        
+        emit roundCreated(msg.sender, challenged, _value);
+    }
+    
+        function playAsChallenger(uint256 _id, uint8 RPS) public  {
+        require(newRound[_id].challenger == msg.sender);
+        require(RPS == SCISSOR || RPS == ROCK || RPS == PAPER, "Your given element is not Rock, Paper or Scissor");
+        require(moveAlreadyMade[msg.sender][_id] == false, "You already made your move for this round");
+        
+        newRound[_id].moveAlreadyMadebyChallenger = true;
+        
+        newRound[_id].playerOneVote = RPS;
+        voteNumberByPlayer[msg.sender] = RPS;
+        
+        emit challengerMadeHisMove(_id);
+    }
+    function playAsChallenged(uint256 _id, uint8 RPS)  public {
+        require(msg.sender == newRound[_id].challenged);
+        require(RPS == SCISSOR || RPS == ROCK || RPS == PAPER, "Your given element is not Rock, Paper or Scissor");
+        require(moveAlreadyMade[msg.sender][_id] == false);
+        
+        newRound[_id].moveAlreadyMadebyChallenged = true;
+        
+        newRound[_id].playerTwoVote = RPS;
+        
+        voteNumberByPlayer[msg.sender] = RPS;
+        
+        if(newRound[_id].playerOneVote > 0 && newRound[_id].playerTwoVote > 0){
+            _calculateResults(newRound[_id].challenger, newRound[_id].challenged, newRound[_id].value);
+        }
+        emit challengedMadeHisMove(_id);
+    }
+        function cancelRound(uint256 _id) public {
+            require(newRound[_id].challenger == msg.sender);
+            tokenBalance[msg.sender] += newRound[_id].value;
+            newRound = [];
+            
+            emit challengerCancelledRound(_id);
+        }
+    
+    function _calculateResults(address challenger, address challenged, uint256 value) private {
+        if(voteNumberByPlayer[challenger] == SCISSOR && voteNumberByPlayer[challenged] == ROCK){
+            tokenBalance[challenged]+= value;
+            
+        }
+        else if(voteNumberByPlayer[challenger] == SCISSOR && voteNumberByPlayer[challenged] == PAPER){
+            tokenBalance[challenger]+= value;
+        }
+        else if(voteNumberByPlayer[challenger] == ROCK && voteNumberByPlayer[challenged] == SCISSOR){
+            tokenBalance[challenger]+= value;
+        }
+        else if(voteNumberByPlayer[challenger] == ROCK && voteNumberByPlayer[challenged] == PAPER){
+            tokenBalance[challenged]+= value;
+        }
+        else if(voteNumberByPlayer[challenger] == PAPER && voteNumberByPlayer[challenged] == SCISSOR){
+            tokenBalance[challenged]+=value;
+        }
+        else if(voteNumberByPlayer[challenger] == PAPER && voteNumberByPlayer[challenged] == ROCK){
+            tokenBalance[challenger]+=value;
+        }
+        else {
+            tokenBalance[challenger]+=value/2;
+            tokenBalance[challenged]+=value/2;
+        }
+    }
+        function _enrollAsChallenger(uint256 addedTokenToPlay) private {
+        tokenBalance[msg.sender]-= addedTokenToPlay;
+
+    }
+        function getRoundbyId(uint256 _id) public view returns (
+            bool moveAlreadyMadebyChallenger,
+            bool moveAlreadyMadebyChallenged,
+            uint256 tokenNumberInRound,
+            address Challenger,
+            address Challenged,
+            bool playerTwoEnrolled){
+        return (newRound[_id].moveAlreadyMadebyChallenger, newRound[_id].moveAlreadyMadebyChallenged, newRound[_id].value,
+        newRound[_id].challenger, newRound[_id].challenged, newRound[_id].playerTwoEnrolled);
+    }
+    
+        function getAllRoundId() public view returns(Rounds[] memory){ //This one need to be updated as I would like to have a function getting all Round Id's that have been created
+        return newRound; 
+        }
+        function getWalletBalance() public view returns(uint256){
+            return address(this).balance;
+        }
+        function getBalance() public  view returns (uint256){
+        return tokenBalance[msg.sender]; 
+    }
+    
+}
