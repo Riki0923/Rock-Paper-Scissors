@@ -83,12 +83,13 @@ contract RockPaperScissor{
     }
         function cancelRound(uint256 _id) public {
             require(newRound[_id].challenger == msg.sender);
-            for(uint i = 0; i < newRound.length; i++){
-                newRound[i-1] = newRound[i];
+            uint256 lastId = roundsByPlayer[msg.sender][roundsByPlayer[msg.sender].length-1];
+            for (uint i = 0; i < roundsByPlayer[msg.sender].length; i++) {
+            if (roundsByPlayer[msg.sender][i] == _id) {
+                roundsByPlayer[msg.sender][i] = lastId;
+                roundsByPlayer[msg.sender].pop();
             }
-            newRound.pop();
-
-            tokenBalance[msg.sender] += newRound[_id].value;
+        }
             
             emit challengerCancelledRound(_id);
         }
