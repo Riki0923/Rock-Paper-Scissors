@@ -28,6 +28,7 @@ contract RockPaperScissor{
     mapping (address => uint256) voteNumberByPlayer;
     mapping (address => uint256) tokenBalance;
     mapping (address => mapping(uint256 => bool)) moveAlreadyMade;
+    mapping (address => uint256[]) roundsByPlayer;
     
     event roundCreated(address challenger, address challenged, uint256 value);
     event challengedEnrollment(address challengedAddress, uint256 forRoundId);
@@ -38,23 +39,15 @@ contract RockPaperScissor{
     function addBalance(uint256 tokenAmount)  public {
         tokenBalance[msg.sender] += tokenAmount;
     }
-
-    function enrollAsChallenged(uint256 _id, uint256 _value) public  {
-        require(msg.sender == newRound[_id].challenged, "challenger and challenged cannot have the same address");
-        require(newRound[_id].playerTwoEnrolled == false, "you already made your move to this round");
-        require(newRound[_id].value == _value, "in order to play you need to deposit the same token amount as the challenger did");
-        
-        newRound[_id].playerTwoEnrolled = true;
-        newRound[_id].value += _value;
-        tokenBalance[msg.sender]-= _value;
-        
-        emit challengedEnrollment(msg.sender, _id);
-    }
     
     function createRound(address payable challenger, address payable challenged, uint256 _value) public  {
+        require(challenger== msg.sender);
+        require(challenger != challenged);
         _enrollAsChallenger(_value);
         Rounds memory currentRound = Rounds(newRound.length, false, false, _value, NO_VOTE, NO_VOTE, challenger, challenged, false);
         newRound.push(currentRound);
+        roundsByPlayer[msg.sender].push(currentRound.id);
+        roundsByPlayer[challenged].push(currentRound.id);
         
         emit roundCreated(msg.sender, challenged, _value);
     }
@@ -71,7 +64,8 @@ contract RockPaperScissor{
         
         emit challengerMadeHisMove(_id);
     }
-    function playAsChallenged(uint256 _id, uint8 RPS)  public {
+    function playAsChallenged(uint256 _id, uint8 RPS, uint256 _value)  public {
+        _enrollAsChallenged(_id, _value);
         require(msg.sender == newRound[_id].challenged);
         require(RPS == SCISSOR || RPS == ROCK || RPS == PAPER, "Your given element is not Rock, Paper or Scissor");
         require(moveAlreadyMade[msg.sender][_id] == false);
@@ -89,8 +83,12 @@ contract RockPaperScissor{
     }
         function cancelRound(uint256 _id) public {
             require(newRound[_id].challenger == msg.sender);
+            for(uint i = 0; i < newRound.length; i++){
+                newRound[i-1] = newRound[i];
+            }
+            newRound.pop();
+
             tokenBalance[msg.sender] += newRound[_id].value;
-            newRound = [];
             
             emit challengerCancelledRound(_id);
         }
@@ -120,6 +118,18 @@ contract RockPaperScissor{
             tokenBalance[challenged]+=value/2;
         }
     }
+    function _enrollAsChallenged(uint256 _id, uint256 _value) private {
+        require(msg.sender == newRound[_id].challenged, "challenger and challenged cannot have the same address");
+        require(newRound[_id].playerTwoEnrolled == false, "you already made your move to this round");
+        require(newRound[_id].value == _value, "in order to play you need to deposit the same token amount as the challenger did");
+        
+        newRound[_id].playerTwoEnrolled = true;
+        newRound[_id].value += _value;
+        tokenBalance[msg.sender]-= _value;
+        
+        emit challengedEnrollment(msg.sender, _id);
+    }
+    
         function _enrollAsChallenger(uint256 addedTokenToPlay) private {
         tokenBalance[msg.sender]-= addedTokenToPlay;
 
@@ -134,13 +144,11 @@ contract RockPaperScissor{
         return (newRound[_id].moveAlreadyMadebyChallenger, newRound[_id].moveAlreadyMadebyChallenged, newRound[_id].value,
         newRound[_id].challenger, newRound[_id].challenged, newRound[_id].playerTwoEnrolled);
     }
-    
-        function getAllRoundId() public view returns(Rounds[] memory){ //This one need to be updated as I would like to have a function getting all Round Id's that have been created
-        return newRound; 
+        
+        function getAllRoundbyOwner(address _owner) public view returns(uint256[] memory roundIds){
+            return roundsByPlayer[_owner];
         }
-        function getWalletBalance() public view returns(uint256){
-            return address(this).balance;
-        }
+        
         function getBalance() public  view returns (uint256){
         return tokenBalance[msg.sender]; 
     }
