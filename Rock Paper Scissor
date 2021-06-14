@@ -9,6 +9,14 @@ contract RockPaperScissor{
     uint8 constant PAPER = 3;
     uint8 constant NO_VOTE = 0;
     
+    string private _name; // name of the token
+    string private _symbol; //symbol of the token
+    
+    constructor (string memory name_, string memory symbol_) {
+        _name = name_;
+        _symbol = symbol_;
+    }
+    
      struct Rounds {
         uint256 id;
         bool moveAlreadyMadebyChallenger;
@@ -49,11 +57,11 @@ contract RockPaperScissor{
     //Shows that the challenger changed his mind/don't want to wait more for the selected round, he cancelled it
     event challengerCancelledRound(uint256 forRoundId);
      
-    function addBalance(uint256 tokenAmount)  public {
+    function addBalance(uint256 tokenAmount)  external {
         tokenBalance[msg.sender] += tokenAmount; //To add balance to the selected address's wallet if somebody wants to bid some tokens to play
     }
     
-    function createRound(address payable challenger, address payable challenged, uint256 _value) public  {
+    function createRound(address payable challenger, address payable challenged, uint256 _value) external  {
         require(challenger== msg.sender); //challenger needs to be the msg.sender
         require(challenger != challenged); // the challenger cannot be the challenged person, otherwise the same person should play with himself
         _enrollAsChallenger(_value); //runs the _enrollAsChallenger function
@@ -65,7 +73,7 @@ contract RockPaperScissor{
         emit roundCreated(msg.sender, challenged, _value); //Notification that the round was created
     }
     
-        function playAsChallenger(uint256 _id, uint8 RPS) public  {
+        function playAsChallenger(uint256 _id, uint8 RPS) external  {
         require(newRound[_id].challenger == msg.sender); //In order to play msg.sender needs to have the same address as challenged
         require(RPS == SCISSOR || RPS == ROCK || RPS == PAPER, "Your given element is not Rock, Paper or Scissor"); //only 3 values are available to use here, otherwise error
         require(moveAlreadyMade[msg.sender][_id] == false, "You already made your move for this round"); //checks if the challenger has already made his move, if so, function reverts
@@ -77,7 +85,7 @@ contract RockPaperScissor{
         
         emit challengerMadeHisMove(_id); //Notification that the challenger has made his move for the selected Round
     }
-    function playAsChallenged(uint256 _id, uint8 RPS, uint256 _value)  public {
+    function playAsChallenged(uint256 _id, uint8 RPS, uint256 _value)  external {
         _enrollAsChallenged(_id, _value); // executes the _enrollAsChallenged function
         require(msg.sender == newRound[_id].challenged); //challenged needs to be challenged person which is saved in the array
         require(RPS == SCISSOR || RPS == ROCK || RPS == PAPER, "Your given element is not Rock, Paper or Scissor"); //only 3 values are availble here
@@ -94,7 +102,7 @@ contract RockPaperScissor{
         } // If both the challenger and challenged has made his move, executes the _calculateResults function
         emit challengedMadeHisMove(_id);
     }
-        function cancelRound(uint256 _id) public {
+        function cancelRound(uint256 _id) external {
             require(newRound[_id].roundCancelled == false); // checks if the round is not cancelled, if it is, reverts
             
             // checks if the playerTwoEnrolled or made his move, if he did, the round cannot be cancelled anymore as it has been finished already
@@ -159,7 +167,7 @@ contract RockPaperScissor{
         tokenBalance[msg.sender]-= addedTokenToPlay; //deducts the amount the challenger wants to play with from his address
 
     }
-        function getRoundbyId(uint256 _id) public view returns (
+        function getRoundbyId(uint256 _id) external view returns (
         // If somebody would like to check for a round, he can do it here, this shows if the status of the round, who made his move, if it is cancelled, etc
             bool moveAlreadyMadebyChallenger,
             bool moveAlreadyMadebyChallenged,
@@ -172,11 +180,11 @@ contract RockPaperScissor{
         newRound[_id].challenger, newRound[_id].challenged, newRound[_id].playerTwoEnrolled, newRound[_id].roundCancelled);
     }
         
-        function getAllRoundbyOwner(address _owner) public view returns(uint256[] memory roundIds){
+        function getAllRoundbyOwner(address _owner) external view returns(uint256[] memory roundIds){
             return roundsByPlayer[_owner]; // this shows that which Id's belongs to the selected Address
         }
         
-        function getBalance() public  view returns (uint256){
+        function getBalance() external  view returns (uint256){
         return tokenBalance[msg.sender]; // This shows the amount of balance the msg.sender has
     }
     
