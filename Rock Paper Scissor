@@ -4,8 +4,6 @@ pragma experimental ABIEncoderV2;
 
 contract RockPaperScissor{
     
-//    address BobAddress = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
-//    address AliceAddress = 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2;
     uint8 constant SCISSOR = 1;
     uint8 constant ROCK = 2;
     uint8 constant PAPER = 3;
@@ -21,6 +19,7 @@ contract RockPaperScissor{
         address payable challenger;
         address payable challenged;
         bool playerTwoEnrolled;
+        bool roundCancelled;
     }
     
     Rounds[] newRound;
@@ -44,7 +43,7 @@ contract RockPaperScissor{
         require(challenger== msg.sender);
         require(challenger != challenged);
         _enrollAsChallenger(_value);
-        Rounds memory currentRound = Rounds(newRound.length, false, false, _value, NO_VOTE, NO_VOTE, challenger, challenged, false);
+        Rounds memory currentRound = Rounds(newRound.length, false, false, _value, NO_VOTE, NO_VOTE, challenger, challenged, false, false);
         newRound.push(currentRound);
         roundsByPlayer[msg.sender].push(currentRound.id);
         roundsByPlayer[challenged].push(currentRound.id);
@@ -82,6 +81,8 @@ contract RockPaperScissor{
         emit challengedMadeHisMove(_id);
     }
         function cancelRound(uint256 _id) public {
+            require(newRound[_id].roundCancelled == false);
+            require(newRound[_id].playerTwoEnrolled == false);
             require(newRound[_id].challenger == msg.sender);
             uint256 lastId = roundsByPlayer[msg.sender][roundsByPlayer[msg.sender].length-1];
             for (uint i = 0; i < roundsByPlayer[msg.sender].length; i++) {
@@ -90,7 +91,7 @@ contract RockPaperScissor{
                 roundsByPlayer[msg.sender].pop();
             }
         }
-            
+            newRound[_id].roundCancelled = true;   
             emit challengerCancelledRound(_id);
         }
     
@@ -120,6 +121,7 @@ contract RockPaperScissor{
         }
     }
     function _enrollAsChallenged(uint256 _id, uint256 _value) private {
+        require(newRound[_id].roundCancelled == false);
         require(msg.sender == newRound[_id].challenged, "challenger and challenged cannot have the same address");
         require(newRound[_id].playerTwoEnrolled == false, "you already made your move to this round");
         require(newRound[_id].value == _value, "in order to play you need to deposit the same token amount as the challenger did");
