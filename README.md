@@ -22,7 +22,7 @@ Nice to have, but not necessary.
 # There are two type of players in this game:
 - PlayerOne: This player creates a Round and also set the playerTwo's address. After that's done the challenger can make his move which element he will choose for the specific round
 - PlayerTwo: This player is the challenged person, whom also needs to make his move 
-- After both players have chosen their element ( Rock, Paper or Scissor ) the winner or in case of the draw both players will get their money back.
+- After both players have chosen their element ( Rock, Paper or Scissor ) the winner gets the bet tokenAmount added by both players (or in case of the draw both players will get their money back).
 
 ## Functions
 
