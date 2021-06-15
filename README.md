@@ -69,3 +69,15 @@ Nice to have, but not necessary.
 # getBalance
 
 - A function where you can check the msg.sender's tokenBalance
+
+# _mint
+
+- This function executes when the contract is deployed by the msg.sender. It also mints a 100 Tokens from ERC 20. 
+
+# Progress on stretch Goals
+
+- Make it a utility whereby any 2 people can decide to play against each other => {checkmark}
+- Reduce gas costs as much as possible => not sure on this one, I can remove some events to make less gas usage for an instance.
+- Let players bet their previous winnings => In progress.
+- How can you entice players to play, knowing that they may have their funds stuck in the contract if they face an uncooperative player? => Created the cancelRound function for this {checkmark} .
+- Include any tests using Hardhat => I haven't met with Hardhat yet, so I do not know how to implement this one.
