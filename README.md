@@ -76,8 +76,8 @@ Nice to have, but not necessary.
 
 # Progress on stretch Goals
 
-- Make it a utility whereby any 2 people can decide to play against each other => :white_check_mark: 
+- Make it a utility whereby any 2 people can decide to play against each other => :green_check_mark: 
 - Reduce gas costs as much as possible => not sure on this one, I can remove some events to make less gas usage for an instance.
 - Let players bet their previous winnings => In progress.
-- How can you entice players to play, knowing that they may have their funds stuck in the contract if they face an uncooperative player? => Created the cancelRound function for this {checkmark} .
+- How can you entice players to play, knowing that they may have their funds stuck in the contract if they face an uncooperative player? => Created the cancelRound function for this :green_check_mark: . But I do not know if it makes the contract any safer.
 - Include any tests using Hardhat => I haven't met with Hardhat yet, so I do not know how to implement this one.
