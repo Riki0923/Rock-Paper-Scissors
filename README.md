@@ -28,7 +28,7 @@ Nice to have, but not necessary.
 
 # addBalance
 
-- Pretty Simple, this function can add the balance for the msg.sender
+- Pretty Simple, this function can add more tokens to the msg.sender's address
 
 # CreateRound
 
