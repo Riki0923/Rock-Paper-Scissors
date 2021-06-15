@@ -1,20 +1,20 @@
+// SPDX-License-Identifier: MIT
+
 pragma solidity 0.8.1;
 pragma experimental ABIEncoderV2;
 
+import "./ERC20.sol";
 
-contract RockPaperScissor{
+contract RockPaperScissor is ERC20{
     
     uint8 constant SCISSOR = 1;
     uint8 constant ROCK = 2;
     uint8 constant PAPER = 3;
     uint8 constant NO_VOTE = 0;
     
-    string private _name; // name of the token
-    string private _symbol; //symbol of the token
-    
-    constructor (string memory name_, string memory symbol_) {
-        _name = name_;
-        _symbol = symbol_;
+    constructor (string memory name_, string memory symbol_) ERC20(name_, symbol_) {
+
+        _mint(msg.sender, 100 );
     }
     
      struct Rounds {
@@ -64,9 +64,12 @@ contract RockPaperScissor{
     function createRound(address payable challenger, address payable challenged, uint256 _value) external  {
         require(challenger== msg.sender); //challenger needs to be the msg.sender
         require(challenger != challenged); // the challenger cannot be the challenged person, otherwise the same person should play with himself
+        
         _enrollAsChallenger(_value); //runs the _enrollAsChallenger function
+        
         Rounds memory currentRound = Rounds(newRound.length, false, false, _value, NO_VOTE, NO_VOTE, challenger, challenged, false, false);
         newRound.push(currentRound); //create the array for the Round
+        
         roundsByPlayer[msg.sender].push(currentRound.id); //Mapping that saves which roundId's belong to the challenger
         roundsByPlayer[challenged].push(currentRound.id); //same mapping just for the challenged
         
@@ -108,7 +111,9 @@ contract RockPaperScissor{
             // checks if the playerTwoEnrolled or made his move, if he did, the round cannot be cancelled anymore as it has been finished already
             require(newRound[_id].playerTwoEnrolled == false); 
             require(newRound[_id].challenger == msg.sender); // only the challenger can cancel the round
+            
             uint256 lastId = roundsByPlayer[msg.sender][roundsByPlayer[msg.sender].length-1];
+            
             for (uint i = 0; i < roundsByPlayer[msg.sender].length; i++) { // looping through the array's length
             if (roundsByPlayer[msg.sender][i] == _id) { // if i equals with the Id the challenger wants to delete
                 roundsByPlayer[msg.sender][i] = lastId; // the last element of the array becomes the id the challenger wants to remove
@@ -186,6 +191,15 @@ contract RockPaperScissor{
         
         function getBalance() external  view returns (uint256){
         return tokenBalance[msg.sender]; // This shows the amount of balance the msg.sender has
+    }
+    
+        function _mint(address account, uint256 amount) internal override virtual {
+        require(account != address(0), "ERC20: mint to the zero address");
+
+        _beforeTokenTransfer(address(0), account, amount);
+
+        tokenBalance[account] += amount;
+        emit Transfer(address(0), account, amount);
     }
     
 }
