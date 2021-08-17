@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.1;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "./ERC20.sol";
+import "./SafeMath.sol";
 
-contract RockPaperScissor is ERC20{
+contract RockPaperScissor is ERC20 {
+    
+    using SafeMath for uint;
     
     uint8 constant SCISSOR = 1;
     uint8 constant ROCK = 2;
@@ -19,13 +22,12 @@ contract RockPaperScissor is ERC20{
     
      struct Rounds {
         uint256 id;
-        bool moveAlreadyMadebyChallenger;
         bool moveAlreadyMadebyChallenged;
         uint256 value;
         uint8 playerOneVote;
         uint8 playerTwoVote;
-        address payable challenger;
-        address payable challenged;
+        address challenger;
+        address challenged;
         bool playerTwoEnrolled;
         bool roundCancelled;
     }
@@ -48,46 +50,33 @@ contract RockPaperScissor is ERC20{
     //Shows once a round is created, whom will be the players, also the amount the challenger has bid
     event roundCreated(address challenger, address challenged, uint256 value);
     
-    // Notifies that the challenger has made his move 
-    event challengerMadeHisMove(uint256 forRoundId);
-    
     //Notifies that the challenged person had made his move
     event challengedMadeHisMove(uint256 forRoundId);
     
     //Shows that the challenger changed his mind/don't want to wait more for the selected round, he cancelled it
     event challengerCancelledRound(uint256 forRoundId);
      
-    function addBalance(uint256 tokenAmount)  external {
-        tokenBalance[msg.sender] += tokenAmount; //To add balance to the selected address's wallet if somebody wants to bid some tokens to play
+    function addBalance() payable  external {
+        tokenBalance[msg.sender] += msg.value; //To add balance to the selected address's wallet if somebody wants to bid some tokens to play
     }
     
-    function createRound(address payable challenger, address payable challenged, uint256 _value) external  {
-        require(challenger== msg.sender); //challenger needs to be the msg.sender
-        require(challenger != challenged); // the challenger cannot be the challenged person, otherwise the same person should play with himself
+    function createRound(address challenged, uint256 _value, uint8 RPS) payable  external  {
+        require(msg.sender != challenged); // the challenger cannot be the challenged person, otherwise the same person should play with himself
+        require(RPS == SCISSOR || RPS == ROCK || RPS == PAPER, "Your given element is not Rock, Paper or Scissor"); //only 3 values are available to use here, otherwise error
+        tokenBalance[msg.sender].add(_value);
         
-        _enrollAsChallenger(_value); //runs the _enrollAsChallenger function
         
-        Rounds memory currentRound = Rounds(newRound.length, false, false, _value, NO_VOTE, NO_VOTE, challenger, challenged, false, false);
+        Rounds memory currentRound = Rounds(newRound.length, false, _value, RPS, NO_VOTE, msg.sender, challenged, false, false);
         newRound.push(currentRound); //create the array for the Round
         
         roundsByPlayer[msg.sender].push(currentRound.id); //Mapping that saves which roundId's belong to the challenger
         roundsByPlayer[challenged].push(currentRound.id); //same mapping just for the challenged
         
-        emit roundCreated(msg.sender, challenged, _value); //Notification that the round was created
-    }
-    
-        function playAsChallenger(uint256 _id, uint8 RPS) external  {
-        require(newRound[_id].challenger == msg.sender); //In order to play msg.sender needs to have the same address as challenged
-        require(RPS == SCISSOR || RPS == ROCK || RPS == PAPER, "Your given element is not Rock, Paper or Scissor"); //only 3 values are available to use here, otherwise error
-        require(moveAlreadyMade[msg.sender][_id] == false, "You already made your move for this round"); //checks if the challenger has already made his move, if so, function reverts
-        
-        newRound[_id].moveAlreadyMadebyChallenger = true; //if no move has been made for the round, the boolean changes to true
-        
-        newRound[_id].playerOneVote = RPS; //sets this to the amount the challenger has chosen, either Rock Paper or Scissor
         voteNumberByPlayer[msg.sender] = RPS; //save this to the mapping which move the player has made
+    
         
-        emit challengerMadeHisMove(_id); //Notification that the challenger has made his move for the selected Round
     }
+
     function playAsChallenged(uint256 _id, uint8 RPS, uint256 _value)  external {
         _enrollAsChallenged(_id, _value); // executes the _enrollAsChallenged function
         require(msg.sender == newRound[_id].challenged); //challenged needs to be challenged person which is saved in the array
@@ -106,10 +95,11 @@ contract RockPaperScissor is ERC20{
         emit challengedMadeHisMove(_id);
     }
         function cancelRound(uint256 _id) external {
-            require(newRound[_id].roundCancelled == false); // checks if the round is not cancelled, if it is, reverts
+            require(newRound[_id].playerTwoEnrolled == false, "This match has already been played out, so you cannot cancel it"); 
+            require(newRound[_id].roundCancelled == false, "This round has already been cancelled"); // checks if the round is not cancelled, if it is, reverts
             
             // checks if the playerTwoEnrolled or made his move, if he did, the round cannot be cancelled anymore as it has been finished already
-            require(newRound[_id].playerTwoEnrolled == false); 
+            
             require(newRound[_id].challenger == msg.sender); // only the challenger can cancel the round
             
             uint256 lastId = roundsByPlayer[msg.sender][roundsByPlayer[msg.sender].length-1];
@@ -124,69 +114,79 @@ contract RockPaperScissor is ERC20{
             emit challengerCancelledRound(_id);  // notification that the round has been cancelled for the specific Id
         }
     
-    function _calculateResults(address challenger, address challenged, uint256 value) private {
+    function _calculateResults(address challenger, address challenged, uint256 value) view private {
         // If challenger chooses 1 and challenged 2 => playerTwo wins, which is the challenged, also the tokenTransfer executes to challenged's address
         if(voteNumberByPlayer[challenger] == SCISSOR && voteNumberByPlayer[challenged] == ROCK){
-            tokenBalance[challenged]+= value; 
+            tokenBalance[challenged].add(value); 
         // If Challenger chooses 1 and challenged 3 =>Player one wins, scissor beats paper
         }
         else if(voteNumberByPlayer[challenger] == SCISSOR && voteNumberByPlayer[challenged] == PAPER){
-            tokenBalance[challenger]+= value;
+            tokenBalance[challenger].add(value);
         
         }
         //If challenger chooses 2 and challenged 1, challenger wins as Rock beats Scissor
         else if(voteNumberByPlayer[challenger] == ROCK && voteNumberByPlayer[challenged] == SCISSOR){
-            tokenBalance[challenger]+= value;
+            tokenBalance[challenger].add(value);
         }
         //If challenger chooses 2 and challenged 3 => player two wins as Paper beats rock
         else if(voteNumberByPlayer[challenger] == ROCK && voteNumberByPlayer[challenged] == PAPER){
-            tokenBalance[challenged]+= value;
+            tokenBalance[challenged].add(value);
         }
         // If challenger chooses 3 and challenged 1 => challenged wins as scissor beats paper
         else if(voteNumberByPlayer[challenger] == PAPER && voteNumberByPlayer[challenged] == SCISSOR){
-            tokenBalance[challenged]+=value;
+            tokenBalance[challenged].add(value);
         }
         // If challenger chooses 3 and challenged 2 => challenger wins as Paper beats Rock
         else if(voteNumberByPlayer[challenger] == PAPER && voteNumberByPlayer[challenged] == ROCK){
-            tokenBalance[challenger]+=value;
+            tokenBalance[challenger].add(value);
         }
         // Every other situation is a draw, so both player gets their value/2 back which was their own bets
         else {
-            tokenBalance[challenger]+=value/2;
-            tokenBalance[challenged]+=value/2;
+            tokenBalance[challenger].add(value/2);
+            tokenBalance[challenged].add(value/2);
         }
     }
     function _enrollAsChallenged(uint256 _id, uint256 _value) private {
         require(newRound[_id].roundCancelled == false); // Round cannot be cancelled otherwise it would not be possible for the challenged to be enrolled
         require(msg.sender == newRound[_id].challenged, "challenger and challenged cannot have the same address");
         require(newRound[_id].playerTwoEnrolled == false, "you already made your move to this round");
-        require(newRound[_id].value == _value, "in order to play you need to deposit the same token amount as the challenger did");
+        require(newRound[_id].value <= tokenBalance[msg.sender], "in order to play you need to deposit the same token amount as the challenger did");
         
         newRound[_id].playerTwoEnrolled = true; // set the boolean to true
         newRound[_id].value += _value; // adds the value to the newround.value 
-        tokenBalance[msg.sender]-= _value; // deducts the amount the challenged has made from his Address
+        tokenBalance[msg.sender].add(_value); // deducts the amount the challenged has made from his Address
         
+        _sortFinishedGames(_id);
     }
     
-        function _enrollAsChallenger(uint256 addedTokenToPlay) private {
-        tokenBalance[msg.sender]-= addedTokenToPlay; //deducts the amount the challenger wants to play with from his address
-
+    function _sortFinishedGames(uint256 _id) private {
+        require(newRound[_id].playerTwoEnrolled == true);
+        
+        uint256 lastId = roundsByPlayer[msg.sender][roundsByPlayer[msg.sender].length-1];
+        
+        for(uint i = 0; i < roundsByPlayer[msg.sender].length; i++){
+            if(roundsByPlayer[msg.sender][i] == _id){
+                roundsByPlayer[msg.sender][i] = lastId;
+                roundsByPlayer[msg.sender].pop();
+            }
+            
+        }
     }
-        function getRoundbyId(uint256 _id) external view returns (
-        // If somebody would like to check for a round, he can do it here, this shows if the status of the round, who made his move, if it is cancelled, etc
-            bool moveAlreadyMadebyChallenger,
+    
+    function getRoundbyId(uint256 _id) external view returns (
+        // If somebody would like to check for a round, he can do it here, this shows the status of the round, who made his move, if it is cancelled, etc
             bool moveAlreadyMadebyChallenged,
             uint256 tokenNumberInRound,
             address Challenger,
             address Challenged,
             bool playerTwoEnrolled,
             bool roundCancelled){
-        return (newRound[_id].moveAlreadyMadebyChallenger, newRound[_id].moveAlreadyMadebyChallenged, newRound[_id].value,
+        return ( newRound[_id].moveAlreadyMadebyChallenged, newRound[_id].value,
         newRound[_id].challenger, newRound[_id].challenged, newRound[_id].playerTwoEnrolled, newRound[_id].roundCancelled);
     }
         
-        function getAllRoundbyOwner(address _owner) external view returns(uint256[] memory roundIds){
-            return roundsByPlayer[_owner]; // this shows that which Id's belongs to the selected Address
+        function getAllRoundbyOwner() external view returns(uint256[] memory roundIds){
+            return roundsByPlayer[msg.sender]; // this shows that which Id's belongs to the selected Address
         }
         
         function getBalance() external  view returns (uint256){
@@ -198,7 +198,7 @@ contract RockPaperScissor is ERC20{
 
         _beforeTokenTransfer(address(0), account, amount);
 
-        tokenBalance[account] += amount;
+        tokenBalance[account].add(amount);
         emit Transfer(address(0), account, amount);
     }
     
