@@ -150,7 +150,7 @@ contract RockPaperScissor is ERC20 {
         require(newRound[_id].roundCancelled == false); // Round cannot be cancelled otherwise it would not be possible for the challenged to be enrolled
         require(msg.sender == newRound[_id].challenged, "challenger and challenged cannot have the same address");
         require(newRound[_id].playerTwoEnrolled == false, "you already made your move to this round");
-        require(newRound[_id].value <= tokenBalance[msg.sender], "in order to play you need to deposit the same token amount as the challenger did");
+        require(newRound[_id].value <= token, "in order to play you need to deposit the same token amount as the challenger did");
         
         newRound[_id].playerTwoEnrolled = true; // set the boolean to true
         newRound[_id].value += _value; // adds the value to the newround.value 
@@ -171,6 +171,9 @@ contract RockPaperScissor is ERC20 {
             }
             
         }
+
+            
+        
     }
     
     function getRoundbyId(uint256 _id) external view returns (
