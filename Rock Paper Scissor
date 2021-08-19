@@ -121,36 +121,36 @@ contract RockPaperScissor is ERC20 {
             emit challengerCancelledRound(_id);  // notification that the round has been cancelled for the specific Id
         }
     
-    function _calculateResults(address challenger, address challenged, uint256 value) view private {
+    function _calculateResults(address challenger, address challenged, uint256 value) private {
         // If challenger chooses 1 and challenged 2 => playerTwo wins, which is the challenged, also the tokenTransfer executes to challenged's address
         if(voteNumberByPlayer[challenger] == SCISSOR && voteNumberByPlayer[challenged] == ROCK){
-            tokenBalance[challenged].add(value); 
+            tokenBalance[challenged] += value; 
         // If Challenger chooses 1 and challenged 3 =>Player one wins, scissor beats paper
         }
         else if(voteNumberByPlayer[challenger] == SCISSOR && voteNumberByPlayer[challenged] == PAPER){
-            tokenBalance[challenger].add(value);
+            tokenBalance[challenger] += value;
         
         }
         //If challenger chooses 2 and challenged 1, challenger wins as Rock beats Scissor
         else if(voteNumberByPlayer[challenger] == ROCK && voteNumberByPlayer[challenged] == SCISSOR){
-            tokenBalance[challenger].add(value);
+            tokenBalance[challenger] += value;
         }
         //If challenger chooses 2 and challenged 3 => player two wins as Paper beats rock
         else if(voteNumberByPlayer[challenger] == ROCK && voteNumberByPlayer[challenged] == PAPER){
-            tokenBalance[challenged].add(value);
+            tokenBalance[challenged] += value;
         }
         // If challenger chooses 3 and challenged 1 => challenged wins as scissor beats paper
         else if(voteNumberByPlayer[challenger] == PAPER && voteNumberByPlayer[challenged] == SCISSOR){
-            tokenBalance[challenged].add(value);
+            tokenBalance[challenged] += value;
         }
         // If challenger chooses 3 and challenged 2 => challenger wins as Paper beats Rock
         else if(voteNumberByPlayer[challenger] == PAPER && voteNumberByPlayer[challenged] == ROCK){
-            tokenBalance[challenger].add(value);
+            tokenBalance[challenger] += value;
         }
         // Every other situation is a draw, so both player gets their value/2 back which was their own bets
         else {
-            tokenBalance[challenger].add(value/2);
-            tokenBalance[challenged].add(value/2);
+            tokenBalance[challenger] += value/2;
+            tokenBalance[challenged] += value/2;
         }
     }
     function _enrollAsChallenged(uint256 _id, uint256 _value) private {
@@ -161,28 +161,21 @@ contract RockPaperScissor is ERC20 {
         
         newRound[_id].playerTwoEnrolled = true; // set the boolean to true
         newRound[_id].value += _value; // adds the value to the newround.value 
-        tokenBalance[msg.sender].add(_value); // deducts the amount the challenged has made from his Address
+        tokenBalance[msg.sender] -= _value; // deducts the amount the challenged has made from his Address
         
-        _sortFinishedGames(_id);
     }
     
-    function _sortFinishedGames(uint256 _id) private { // This function deletes every id where the game has already finished
-        require(newRound[_id].playerTwoEnrolled == true);
+    function sortFinishedGames(uint256 _id) public { // This function deletes every id where the game has already finished
+        require(newRound[_id].playerTwoEnrolled == true, "this game has not been finished yet so it cannot be deleted");
         
         uint256 lastId = roundsByPlayer[msg.sender][roundsByPlayer[msg.sender].length-1];
-        uint256 _lastId= roundsByPlayer[newRound[_id].challenger][roundsByPlayer[newRound[_id].challenger].length-1];
+
         for(uint i = 0; i < roundsByPlayer[msg.sender].length; i++){
             if(roundsByPlayer[msg.sender][i] == _id){
                 roundsByPlayer[msg.sender][i] = lastId;
                 roundsByPlayer[msg.sender].pop();
             }
             
-        }
-        for(uint p = 0; p < roundsByPlayer[newRound[_id].challenger].length; p++){
-            if(roundsByPlayer[newRound[_id].challenger][p] == _id){
-                roundsByPlayer[newRound[_id].challenger][p] == _lastId;
-                roundsByPlayer[newRound[_id].challenger].pop();
-            }
         }
         
     }
@@ -190,19 +183,12 @@ contract RockPaperScissor is ERC20 {
         require(newRound[_id].roundCancelled == true);
         
         uint256 lastId = roundsByPlayer[msg.sender][roundsByPlayer[msg.sender].length-1];
-        uint256 _lastId= roundsByPlayer[newRound[_id].challenged][roundsByPlayer[newRound[_id].challenged].length-1];
         for(uint i = 0; i < roundsByPlayer[msg.sender].length; i++){
             if(roundsByPlayer[msg.sender][i] == _id){
                 roundsByPlayer[msg.sender][i] = lastId;
                 roundsByPlayer[msg.sender].pop();
             }
             
-        }
-        for(uint p = 0; p < roundsByPlayer[newRound[_id].challenger].length; p++){
-            if(roundsByPlayer[newRound[_id].challenged][p] == _id){
-                roundsByPlayer[newRound[_id].challenged][p] == _lastId;
-                roundsByPlayer[newRound[_id].challenged].pop();
-            }
         }
         
     }
