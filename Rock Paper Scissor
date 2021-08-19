@@ -57,13 +57,15 @@ contract RockPaperScissor is ERC20 {
     event challengerCancelledRound(uint256 forRoundId);
      
     function addBalance() payable  external {
-        tokenBalance[msg.sender] += msg.value; //To add balance to the selected address's wallet if somebody wants to bid some tokens to play
+        tokenBalance[msg.sender]+= msg.value; //To add balance to the selected address's wallet if somebody wants to bid some tokens to play
     }
     
     function createRound(address challenged, uint256 _value, uint8 RPS) payable  external  {
         require(msg.sender != challenged); // the challenger cannot be the challenged person, otherwise the same person should play with himself
         require(RPS == SCISSOR || RPS == ROCK || RPS == PAPER, "Your given element is not Rock, Paper or Scissor"); //only 3 values are available to use here, otherwise error
-        tokenBalance[msg.sender].add(_value);
+        require(tokenBalance[msg.sender]>= _value, "Balance is not enough to enroll with this amount");
+        
+        tokenBalance[msg.sender] -= _value;
         
         
         Rounds memory currentRound = Rounds(newRound.length, false, _value, RPS, NO_VOTE, msg.sender, challenged, false, false);
@@ -73,15 +75,20 @@ contract RockPaperScissor is ERC20 {
         roundsByPlayer[challenged].push(currentRound.id); //same mapping just for the challenged
         
         voteNumberByPlayer[msg.sender] = RPS; //save this to the mapping which move the player has made
+        
+        
     
         
     }
 
     function playAsChallenged(uint256 _id, uint8 RPS, uint256 _value)  external {
-        _enrollAsChallenged(_id, _value); // executes the _enrollAsChallenged function
-        require(msg.sender == newRound[_id].challenged); //challenged needs to be challenged person which is saved in the array
+        require(newRound[_id].value <= tokenBalance[msg.sender], "balance is not enough to play in this game");        
         require(RPS == SCISSOR || RPS == ROCK || RPS == PAPER, "Your given element is not Rock, Paper or Scissor"); //only 3 values are availble here
-        require(moveAlreadyMade[msg.sender][_id] == false); // Checks if the challenger has already made a move before
+        require(_value == newRound[_id].value, "you need to bid the same amount of token as the challenger did"); //checks if the same has been set to bid
+        require(msg.sender == newRound[_id].challenged); //challenged needs to be challenged person which is saved in the array
+        _enrollAsChallenged(_id, _value); // executes the _enrollAsChallenged function
+
+        require(moveAlreadyMade[msg.sender][_id] == false); // Checks if the challenged has already made a move before
         
         newRound[_id].moveAlreadyMadebyChallenged = true; // if no move has been made, this sets the boolean to true
         
@@ -150,7 +157,7 @@ contract RockPaperScissor is ERC20 {
         require(newRound[_id].roundCancelled == false); // Round cannot be cancelled otherwise it would not be possible for the challenged to be enrolled
         require(msg.sender == newRound[_id].challenged, "challenger and challenged cannot have the same address");
         require(newRound[_id].playerTwoEnrolled == false, "you already made your move to this round");
-        require(newRound[_id].value <= tokenBalance[msg.sender], "in order to play you need to deposit the same token amount as the challenger did");
+ 
         
         newRound[_id].playerTwoEnrolled = true; // set the boolean to true
         newRound[_id].value += _value; // adds the value to the newround.value 
@@ -159,11 +166,11 @@ contract RockPaperScissor is ERC20 {
         _sortFinishedGames(_id);
     }
     
-    function _sortFinishedGames(uint256 _id) private {
+    function _sortFinishedGames(uint256 _id) private { // This function deletes every id where the game has already finished
         require(newRound[_id].playerTwoEnrolled == true);
         
         uint256 lastId = roundsByPlayer[msg.sender][roundsByPlayer[msg.sender].length-1];
-        
+        uint256 _lastId= roundsByPlayer[newRound[_id].challenger][roundsByPlayer[newRound[_id].challenger].length-1];
         for(uint i = 0; i < roundsByPlayer[msg.sender].length; i++){
             if(roundsByPlayer[msg.sender][i] == _id){
                 roundsByPlayer[msg.sender][i] = lastId;
@@ -171,8 +178,32 @@ contract RockPaperScissor is ERC20 {
             }
             
         }
-
+        for(uint p = 0; p < roundsByPlayer[newRound[_id].challenger].length; p++){
+            if(roundsByPlayer[newRound[_id].challenger][p] == _id){
+                roundsByPlayer[newRound[_id].challenger][p] == _lastId;
+                roundsByPlayer[newRound[_id].challenger].pop();
+            }
+        }
+        
+    }
+    function _cancelRound(uint256 _id) private { // This function deletes the id for the players when the challenger decided to cancel the round instead
+        require(newRound[_id].roundCancelled == true);
+        
+        uint256 lastId = roundsByPlayer[msg.sender][roundsByPlayer[msg.sender].length-1];
+        uint256 _lastId= roundsByPlayer[newRound[_id].challenged][roundsByPlayer[newRound[_id].challenged].length-1];
+        for(uint i = 0; i < roundsByPlayer[msg.sender].length; i++){
+            if(roundsByPlayer[msg.sender][i] == _id){
+                roundsByPlayer[msg.sender][i] = lastId;
+                roundsByPlayer[msg.sender].pop();
+            }
             
+        }
+        for(uint p = 0; p < roundsByPlayer[newRound[_id].challenger].length; p++){
+            if(roundsByPlayer[newRound[_id].challenged][p] == _id){
+                roundsByPlayer[newRound[_id].challenged][p] == _lastId;
+                roundsByPlayer[newRound[_id].challenged].pop();
+            }
+        }
         
     }
     
@@ -196,12 +227,12 @@ contract RockPaperScissor is ERC20 {
         return tokenBalance[msg.sender]; // This shows the amount of balance the msg.sender has
     }
     
-        function _mint(address account, uint256 amount) internal override virtual {
+        function _mint(address account, uint256 amount) internal override virtual { // mints 100 tokens when the contract is deployed
         require(account != address(0), "ERC20: mint to the zero address");
 
         _beforeTokenTransfer(address(0), account, amount);
 
-        tokenBalance[account].add(amount);
+        tokenBalance[account] += amount;
         emit Transfer(address(0), account, amount);
     }
     
