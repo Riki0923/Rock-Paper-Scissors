@@ -34,9 +34,6 @@ Nice to have, but not necessary.
 
 - With this the msg.sender ( Challenger ) can create a round, every struct element will be pushed to the array, also the challenger needs to bet the value he wants to play with(can be 0 also)
 
-# PlayAsChallenger
-
-- This is where the challenger decides with which element he wants to play ( rock paper or scissor)
 
 # PlayAsChallenged
 
@@ -54,9 +51,9 @@ Nice to have, but not necessary.
 
 - Another Private function which enrolls the challenged as he needs to set up the same amount of token as the challenger did, otherwise he cannot play (except if the value set is 0)
 
-# _enrollAsChallenger
+# SortFinished games
 
-- This only deducts the msg.sender (challenger) tokenAmount by the value he bet for the round
+- If somebody decides that he or she no longer wants to see which id's belonged to him/her in previous matches, this function deletes the already finished matches (for the msg.sender).
 
 # getRoundById
 
@@ -77,7 +74,6 @@ Nice to have, but not necessary.
 # Progress on stretch Goals
 
 - Make it a utility whereby any 2 people can decide to play against each other => ✔️
-- Reduce gas costs as much as possible => not sure on this one, I can remove some events to make less gas usage for an instance.
-- Let players bet their previous winnings => In progress.
+- Reduce gas costs as much as possible => not sure on this one, I can remove some events to make less gas usage for an instance. => I believe I know how to implement this now, coming laterz.
+- Let players bet their previous winnings => In progress. ✔️
 - How can you entice players to play, knowing that they may have their funds stuck in the contract if they face an uncooperative player? => Created the cancelRound function for this ✔️ . But I do not know if it makes the contract any safer.
-- Include any tests using Hardhat => I haven't met with Hardhat yet, so I do not know how to implement this one.
