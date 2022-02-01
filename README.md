@@ -1,6 +1,7 @@
 # RockPaperScissors test project
 
 This project has been made by Remix, I suggest to try out there if you want to give it a go
+
 You will create a smart contract named `RockPaperScissors` whereby:  
 Alice and Bob can play the classic game of rock, paper, scissors using ERC20 (of your choosing).    
   
